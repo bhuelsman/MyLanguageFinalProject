@@ -1,7 +1,45 @@
 from sly import Lexer, Parser
+from colorama import Fore, Style
 import copy
 
+"""
+MUST ADD
+ o Adding unary minus(have negative numbers and expressions like -(x+1))
+ o Adding type checking by validating operations and types at runtime (easier) or as syntax errors before something executes (harder)
+ o Implement sorting of the list(quicksort, mergesort, fibbinoci numbers-double recursion)
+
+ o Maybe add indexing operations to lists
+ o Maybe adding strings and appropriate operations
+ o Adding a for or while loop
+ o Adding boolean coffeicents 2 * false have an error message (adding else cases)
+"""
+
 DEBUG = True
+
+def printCyan(s):
+	print(Fore.CYAN, end='')
+	print(s)
+	print(Style.RESET_ALL, end='')
+
+def printBlue(s):
+	print(Fore.BLUE, end='')
+	print(s)
+	print(Style.RESET_ALL, end='')
+
+def printGreen(s):
+	print(Fore.GREEN, end='')
+	print(s)
+	print(Style.RESET_ALL, end='')
+
+def printMagenta(s):
+	print(Fore.MAGENTA, end='')
+	print(s)
+	print(Style.RESET_ALL, end='')
+
+def printYellow(s):
+	print(Fore.YELLOW, end='')
+	print(s)
+	print(Style.RESET_ALL, end='')
 
 def apply(operation, lhs, rhs):
 	if operation == '+':
@@ -33,9 +71,11 @@ class Value:
 		# data needed to define a value
 		self.dataType = dataType
 		
+		if DEBUG: printMagenta(f'Value construction {dataType} {repr(components)}')
+		
 		if dataType in ['int', 'bool']:
 			self.value = components['value']
-		if dataType == 'expr':
+		elif dataType == 'expr':
 			self.expression = components['expression']
 		elif dataType == 'expr_list':
 			self.expressions = components['expressions']
@@ -54,90 +94,111 @@ class Value:
 			self.else_clause = components['else_clause']
 		elif dataType == 'list':
 			self.elements = components['elements']
+		else:
+			print(f'ERROR: constructor fall through {dataType} {repr(components)}')
 			
-	def replace(self, variable, value):
+		if DEBUG: printMagenta(f'Constructor result {repr(self)}')
+			
+	def replace(self, variable, value, valueLookup):
 		# Make a copy and perform appropriate substitutions
 		if self.dataType in ['int','bool']:
 			v = Value(self.dataType, {'value': self.value})
 		elif self.dataType == 'expr':
-			v = Value('expr', {'expr': self.expr.replace(variable, value)})
+			v = Value('expr', {'expr': self.expr.replace(variable, value, valueLookup)})
 		elif self.dataType == 'expr_list':
-			newExpressions = [e.replace(variable, value) for e in self.expressions]
-			v = Value('expr_list', {'expressions': newExpressions}).simplify()
+			newExpressions = [e.replace(variable, value, valueLookup) for e in self.expressions]
+			v = Value('expr_list', {'expressions': newExpressions})
 		elif self.dataType == 'function':
-			v = Value('function', {'variable': str(self.variable), 'result': self.result.replace(variable, value)})
+			v = Value('function', {'variable': str(self.variable), 'result': self.result.replace(variable, value, valueLookup)})
 		elif self.dataType == 'operation':
-			v = Value('operation', {'lhs': self.lhs.replace(variable, value), 'operation': self.operation, 'rhs': self.rhs.replace(variable, value)})
+			v = Value('operation', {'lhs': self.lhs.replace(variable, value, valueLookup), 'operation': self.operation, 'rhs': self.rhs.replace(variable, value, valueLookup)})
 		elif self.dataType == 'id':
 			if self.id == variable:
 				v = copy.deepcopy(value)
 			else:
 				v = Value('id', {'id': self.id})
 		elif self.dataType == 'conditional':
-			condition = self.condition.replace(variable, value), 
-			then_clause = self.then_clause.replace(variable, value)
-			else_clause = self.else_clause.replace(variable, value)
-			v = Value('condition', {'condition': condition, 'then_clause': then_clause, 'else_clause': else_clause})
+			condition = self.condition.replace(variable, value, valueLookup).simplify(valueLookup)
+			if condition.dataType == 'bool':
+				if condition.value:
+					v = self.then_clause.replace(variable, value, valueLookup).simplify(valueLookup)
+				else:
+					v = self.else_clause.replace(variable, value, valueLookup).simplify(valueLookup)
+			else:
+				then_clause = self.then_clause.replace(variable, value, valueLookup)
+				else_clause = self.else_clause.replace(variable, value, valueLookup)
+				v = Value('conditional', {'condition': condition, 'then_clause': then_clause, 'else_clause': else_clause})
 		elif self.dataType == 'list':			
-			newElements = [e.replace(variable, value) for e in self.elements]
+			newElements = [e.replace(variable, value, valueLookup) for e in self.elements]
 			v = Value('list', {'elements': newElements})
 		else:
 			print('ERROR:  fall through in replace')
 		
-		if DEBUG and str(self) != str(v): print(f'Replace {variable} in {self} with {value} to get {v}') 
+		if DEBUG and str(self) != str(v): printCyan(f'Replace {variable} in {repr(self)} with {repr(value)} to get {repr(v)}') 
 		return v
 		
-	def simplify(self):
+	def simplify(self, valueLookup):
 		if DEBUG:
-			print('Simplify', repr(self))
+			printYellow(f'Simplifying {repr(self)}')
+			
 		if self.dataType in ['int','bool']:
 			v = Value(self.dataType, {'value': self.value})
 		elif self.dataType == 'expr':
-			v = Value('expr', {'expr': self.expression.simplify()})
+			v = Value('expr', {'expr': self.expression.simplify(valueLookup)})
 		elif self.dataType == 'expr_list':
-			newExpressions = [e.simplify() for e in self.expressions]
+			newExpressions = [] # [e.simplify() for e in self.expressions]
+			for i, e in enumerate(self.expressions):
+				newExpressions.append(e.simplify(valueLookup))
 			i = 0
-			while i < len(newExpressions)-1:
-				print(newExpressions[i].dataType)
+			while i < len(newExpressions)-1:				
 				if newExpressions[i].dataType == 'function' and newExpressions[i+1].dataType in ['int','bool']:
 					prefix = newExpressions[:i]
 					suffix = newExpressions[i+2:]
-					clause = newExpressions[i].result.replace(newExpressions[i].variable, newExpressions[i+1])
-					newExpressions = prefix + [clause.simplify()] + suffix
+					clause = newExpressions[i].result.replace(newExpressions[i].variable, newExpressions[i+1], valueLookup)
+					newExpressions = prefix + [clause] + suffix
+				elif newExpressions[i].dataType == 'id' and newExpressions[i].id in valueLookup and valueLookup[newExpressions[i].id].dataType == 'function' and newExpressions[i+1].dataType in ['int','bool']:
+					function = valueLookup[newExpressions[i].id]
+					variable = function.variable
+					result = function.result
+					prefix = newExpressions[:i]
+					suffix = newExpressions[i+2:]
+					clause = result.replace(variable, newExpressions[i+1], valueLookup)
+					newExpressions = prefix + [clause] + suffix
 				else:
 					i += 1
-			v = Value('expr_list', {'expressions': newExpressions})
+			if len(newExpressions) == 1:
+				v = newExpressions[0].simplify(valueLookup)
+			else:
+				v = Value('expr_list', {'expressions': newExpressions})
 		elif self.dataType == 'function':
-			v = Value('function', {'variable': str(self.variable), 'result': self.result.simplify()})
+			v = Value('function', {'variable': str(self.variable), 'result': self.result.simplify(valueLookup)})
 		elif self.dataType == 'operation':
 			if self.lhs.dataType == self.rhs.dataType and self.lhs.dataType in ['int', 'bool']:
 				result = apply(self.operation, self.lhs.value, self.rhs.value)
-				v = Value(self.lhs.dataType, {'value': result})
+				if self.operation in ['+', '-', '/', '*']:
+					v = Value(self.lhs.dataType, {'value': result})
+				else:
+					v = Value('bool', {'value': result})
 			else:
-				v = Value('operation', {'lhs': self.lhs.simplify(), 'operation': self.operation, 'rhs': self.rhs.simplify()})
+				v = Value('operation', {'lhs': self.lhs.simplify(valueLookup), 'operation': self.operation, 'rhs': self.rhs.simplify(valueLookup)})
 		elif self.dataType == 'id':
 			v = Value('id', {'id': self.id})
 		elif self.dataType == 'conditional':
-			condition = self.condition.simplify(), 
-			then_clause = self.then_clause.simplify()
-			else_clause = self.else_clause.simplify()
-			print(condition)
-			print(then_clause)
-			print(else_clause)
+			condition = self.condition.simplify(valueLookup)
 			if condition.dataType == 'bool':
-				if condition:
-					v = then_clause
+				if condition.value:
+					v = self.then_clause.simplify(valueLookup)
 				else:
-					v = else_clause
+					v = self.else_clause.simplify(valueLookup)
 			else:
-				v = Value('condition', {'condition': condition, 'then_clause': then_clause, 'else_clause': else_clause})
+				v = Value('conditional', {'condition': condition, 'then_clause': self.then_clause, 'else_clause': self.else_clause})
 		elif self.dataType == 'list':			
-			newElements = [e.simplify() for e in self.elements]
+			newElements = [e.simplify(valueLookup) for e in self.elements]
 			v = Value('list', {'elements': newElements})
 		else:
 			print('ERROR:  fall through in simplify')
 			
-		if DEBUG and str(self) != str(v): print(f'Simplifying {self} to {v}') 
+		if DEBUG: printYellow(f'Simplified {repr(self)} to {repr(v)}') 
 		return v
 		
 	def __str__(self):
@@ -152,9 +213,9 @@ class Value:
 		elif self.dataType == 'id':
 			s = self.id		
 		elif self.dataType == 'conditional':
-			s = f'if {self.condition} then ({self.then_clause}) else {self.else_clause}'
+			s = f'if {self.condition} then {self.then_clause} else {self.else_clause}'
 		elif self.dataType == 'function':
-			s = f'\\ {self.variable} -> {(self.result)}'
+			s = f'\\ {self.variable} => {(self.result)}'
 		elif self.dataType == 'list':
 			s = f'[ {", ".join(str(e) for e in self.elements)} ]'
 			
@@ -173,7 +234,7 @@ class Value:
 		elif self.dataType == 'expr_list':
 			return f'Value(expr_list, [{", ".join(repr(e) for e in self.expressions)}])'
 		elif self.dataType == 'operation':
-			return f'Value(operation, {repr(self.lhs)}, {self.operation}, {repr(self.rhs)}'
+			return f'Value(operation, {repr(self.lhs)}, {self.operation}, {repr(self.rhs)})'
 		elif self.dataType == 'id':
 			return f'Value(id, {self.id})'
 		elif self.dataType == 'conditional':
@@ -181,7 +242,7 @@ class Value:
 		elif self.dataType == 'function':
 			return f'Value(function, {self.variable}, {repr(self.result)})'
 		elif self.dataType == 'list':
-			s = f'[ {", ".join(repr(e) for e in self.elements)} ]'
+			return f'[ {", ".join(repr(e) for e in self.elements)} ]'
 
 class MyLexer(Lexer):
 	# Set of token names.   This is always required
@@ -191,7 +252,8 @@ class MyLexer(Lexer):
 			   EQUAL_OP, COMPARE_OP,
 			   PRINT, DUMP,
 			   IF, THEN, ELSE, ENDIF,
-			   LBRACKET, RBRACKET, COMMA }
+			   LBRACKET, RBRACKET, COMMA,
+			   HEAD, TAIL }
 
 	# String containing ignored characters
 	ignore = ' \t'
@@ -206,7 +268,7 @@ class MyLexer(Lexer):
 	ADD_OP	= r'\+|-'
 	MULT_OP = r'\*|/'
 	EQUAL_OP	= r'==|!='
-	COMPARE_OP	= r'>|<|>=|<='
+	COMPARE_OP	= r'>=|<=|>|<'
 	LBRACKET	= r'\['
 	RBRACKET	= r'\]'
 	COMMA	= r','
@@ -225,6 +287,8 @@ class MyLexer(Lexer):
 	ID['else'] = ELSE
 	ID['then'] = THEN
 	ID['endif'] = ENDIF
+	ID['head'] = HEAD
+	ID['tail'] = TAIL
 
 	ignore_comment = r'\#.*'
 
@@ -250,7 +314,7 @@ class MyParser(Parser):
 	# Grammar rules and actions
 	@_('ID ASSIGN expr_list')
 	def statement(self, p):
-		print(f'Rule: statement -> ID ASSIGN expr_list ({p.ID}, {p.expr_list})')
+		printGreen(f'Rule: statement => ID ASSIGN expr_list ({p.ID}, {repr(p.expr_list)})')
 		self._values[p.ID] = p.expr_list
 		
 	@_('PRINT expr_list')
@@ -268,24 +332,24 @@ class MyParser(Parser):
 	@_('expr SEP expr_list')
 	def expr_list(self, p):
 		if p.expr_list.dataType == 'expr_list':
-			val = Value('expr_list', {'expressions': [p.expr] + p.expr_list.expressions})			
+			v = Value('expr_list', {'expressions': [p.expr] + p.expr_list.expressions})			
 		else:
-			val = Value('expr_list', {'expressions': [p.expr, p.expr_list]})
-		val = val.simplify()
+			v = Value('expr_list', {'expressions': [p.expr, p.expr_list]})
+		v = v.simplify(self._values)
 		
-		if DEBUG: print(f'Rule: expr_list -> expr SEP expr_list ({val})')
-		return val
+		if DEBUG: printGreen(f'Rule: expr_list -> expr SEP expr_list ({repr(v)})')
+		return v
 		
 	@_('expr')
 	def expr_list(self, p):
-		if DEBUG: print(f'Rule: expr_list -> expr ({p.expr})')
+		if DEBUG: printGreen(f'Rule: expr_list -> expr ({p.expr})')
 		return p.expr
 		
 	@_('LAMBDA ID ARROW expr_list')
 	def expr(self, p):
 		v = Value('function', {'variable': p.ID, 'result': p.expr_list})
 		
-		if DEBUG: print(f'Rule: expr -> LAMBDA ID ARROW expr_list ({v})')
+		if DEBUG: printGreen(f'Rule: expr -> LAMBDA ID ARROW expr_list ({repr(v)})')
 		return v
 	
 	@_('expr ADD_OP term')
@@ -296,12 +360,12 @@ class MyParser(Parser):
 		else:
 			v = Value('operation', {'lhs': p.expr, 'operation': p[1], 'rhs': p.term})
 		
-		if DEBUG: print(f'Rule: expr -> expr ADD_OP term ({v})')
+		if DEBUG: printGreen(f'Rule: expr -> expr ADD_OP term ({repr(v)})')
 		return v
 
 	@_('term')
 	def expr(self, p):
-		if DEBUG: print(f'Rule: expr -> term ({p.term})')
+		if DEBUG: printGreen(f'Rule: expr -> term ({p.term})')
 		return p.term
 	
 	@_('IF expr THEN expr ELSE expr ENDIF')
@@ -314,7 +378,7 @@ class MyParser(Parser):
 		else:
 			v = Value('conditional', {'condition': p.expr0, 'then_clause': p.expr1, 'else_clause': p.expr2})
 
-		if DEBUG: print(f'Rule: expr -> IF expr THEN expr ELSE expr ENDIF ({v})')
+		if DEBUG: printGreen(f'Rule: expr -> IF expr THEN expr ELSE expr ENDIF ({repr(v)})')
 		return v
 			
 	@_('term EQUAL_OP term')
@@ -325,18 +389,18 @@ class MyParser(Parser):
 		else:
 			v = Value('operation', {'lhs': p.term0, 'operation': p[1], 'rhs': p.term1})
 				
-		if DEBUG: print(f'Rule: expr -> term EQUAL_OP term ({v})')
+		if DEBUG: printGreen(f'Rule: expr -> term EQUAL_OP term ({repr(v)})')
 		return v
 		
 	@_('term COMPARE_OP term')
 	def expr(self, p):
 		if p.term0.dataType == p.term1.dataType == 'int':
 			result = apply(p[1], p.term0.value, p.term1.value)
-			v = Value('int', {'value': result})
+			v = Value('bool', {'value': result})
 		else:
 			v = Value('operation', {'lhs': p.term0, 'operation': p[1], 'rhs': p.term1})
 		
-		if DEBUG: print(f'expr -> term COMPARE_OP term ({v})')
+		if DEBUG: printGreen(f'Rule: expr -> term COMPARE_OP term ({repr(v)})')
 		return v
 
 	@_('term MULT_OP factor')
@@ -347,34 +411,70 @@ class MyParser(Parser):
 		else:
 			v = Value('operation', {'lhs': p.term, 'operation': p[1], 'rhs': p.factor})
 		
-		if DEBUG: print(f'expr -> term MULT_OP term ({v})')
+		if DEBUG: printGreen(f'expr -> term MULT_OP term ({repr(v)})')
 		return v
 
 	@_('factor')
 	def term(self, p):
-		print(f'Rule: term -> factor ({p.factor})')
+		if DEBUG: printGreen(f'Rule: term -> factor ({repr(p.factor)})')
 		return p.factor
 
 	@_('NUMBER')
 	def factor(self, p):
-		print(f'Rule: factor -> NUMBER ({p.NUMBER})')
+		if DEBUG: printGreen(f'Rule: factor -> NUMBER ({p.NUMBER})')
 		return Value('int', {'value': p.NUMBER})
 		
 	@_('ID')
 	def factor(self, p):
 		if p.ID in self._values:
-			if DEBUG: print(f'Rule: id -> factor ({p.ID}, {self._values[p.ID]})')
+			if DEBUG: printGreen(f'Rule: id -> factor ({p.ID}, {self._values[p.ID]})')
 			return self._values[p.ID]
 		else:
-			if DEBUG: print(f'Rule: id -> factor ({p.ID})')
+			if DEBUG: printGreen(f'Rule: id -> factor ({p.ID})')
 			return Value('id', {'id': p.ID})
 
 	@_('LPAREN expr_list RPAREN')
 	def factor(self, p):
-		if DEBUG: print(f'Rule: LPAREN expr_list RPAREN ({p.expr_list})')
+		if DEBUG: printGreen(f'Rule: LPAREN expr_list RPAREN ({p.expr_list})')
 		return p.expr_list
-	
-	@_('LBRACKET elements RBRACKET')
+		
+	@_('list')
+	def expr(self, p):
+		if DEBUG: printGreen(f'Rule: list -> expr ({repr(p.list)})')
+		return p.list
+		
+	@_('LBRACKET RBRACKET')
+	def list(self, p):
+		if DEBUG: printGreen('Rule: LBRACKET RBRACKET -> list ([])')
+		return Value('list', {'elements': []})
+		
+	@_('LBRACKET comma_sep_list RBRACKET')
+	def list(self, p):
+		if DEBUG: printGreen(f'Rule: LBRACKET comma_sep_list RBRACKET -> list ({repr(p.comma_sep_list)})')
+		return p.comma_sep_list
+		
+	@_('expr')
+	def comma_sep_list(self, p):
+		if DEBUG: printGreen(f'Rule: expr -> comma_sep_list ([{repr(p.expr)}])')
+		return Value('list', {'elements': [p.expr]})
+		
+	@_('expr COMMA comma_sep_list')
+	def comma_sep_list(self, p):
+		v = Value('list', {'elements': [p.expr] + p.comma_sep_list.elements})
+		if DEBUG: printGreen(f'Rule: expr COMMA comma_sep_list -> comma_sep_list ({repr(v)})')
+		return v
+		
+	@_('HEAD SEP list')
+	def term(self, p):
+		v = p.list.elements[0]
+		if DEBUG: printGreen(f'Rule: HEAD list -> term ({repr(v)})')
+		return v
+		
+	@_('TAIL SEP list')
+	def term(self, p):
+		v = Value('list', {'elements': p.list.elements[1:]})
+		if DEBUG: printGreen(f'Rule: TAIL list -> term ({repr(v)})')
+		return v
 
 if __name__ == '__main__':
 	lexer = MyLexer()
@@ -384,7 +484,7 @@ if __name__ == '__main__':
 		try:
 			text = input('>> ')
 			for t in lexer.tokenize(text):
-				print(t)
+				printBlue(t)
 			result = parser.parse(lexer.tokenize(text))
 		except EOFError:
 			break
