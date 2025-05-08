@@ -94,6 +94,9 @@ class Value:
 			self.else_clause = components['else_clause']
 		elif dataType == 'list':
 			self.elements = components['elements']
+		elif dataType == 'unary_op':
+			self.op = components['op']
+			self.rhs = components['rhs']
 		else:
 			print(f'ERROR: constructor fall through {dataType} {repr(components)}')
 			
@@ -131,6 +134,9 @@ class Value:
 		elif self.dataType == 'list':			
 			newElements = [e.replace(variable, value, valueLookup) for e in self.elements]
 			v = Value('list', {'elements': newElements})
+		elif self.dataType == 'unary_op':
+			new_rhs = self.rhs.replace(variable, value, valueLookup)
+			v = Value('unary_op',{'op':self.op, 'rhs': new_rhs})
 		else:
 			print('ERROR:  fall through in replace')
 		
@@ -195,6 +201,12 @@ class Value:
 		elif self.dataType == 'list':			
 			newElements = [e.simplify(valueLookup) for e in self.elements]
 			v = Value('list', {'elements': newElements})
+		elif self.dataType == 'unary_op':
+			simplified_rhs = self.rhs.simplify(valueLookup)
+			if simplified_rhs.dataType in ['int', 'bool']:
+				return Value(simplified_rhs.dataType, {'value': -simplified_rhs.value})
+			else:
+				return Value('unary_op', {'op': self.op, 'rhs': simplified_rhs})
 		else:
 			print('ERROR:  fall through in simplify')
 			
@@ -218,6 +230,8 @@ class Value:
 			s = f'\\ {self.variable} => {(self.result)}'
 		elif self.dataType == 'list':
 			s = f'[ {", ".join(str(e) for e in self.elements)} ]'
+		elif self.dataType == 'unary_op':
+			s = f'({self.op}{str(self.rhs)})'
 			
 		while s.startswith('((') and s.endswith('))'):
 			s = s[1:-1]
@@ -243,6 +257,8 @@ class Value:
 			return f'Value(function, {self.variable}, {repr(self.result)})'
 		elif self.dataType == 'list':
 			return f'[ {", ".join(repr(e) for e in self.elements)} ]'
+		elif self.dataType == 'unary_op':
+			return f'Value(unary_op, {self.op}, {repr(self.rhs)})'
 
 class MyLexer(Lexer):
 	# Set of token names.   This is always required
@@ -265,7 +281,7 @@ class MyLexer(Lexer):
 	SEP		= r'\.'
 	ARROW	= r'=>'
 	LAMBDA	= r'\\'
-	ADD_OP	= r'\+|-'
+	ADD_OP	= r'\+|-' #used for both binary and unary operations
 	MULT_OP = r'\*|/'
 	EQUAL_OP	= r'==|!='
 	COMPARE_OP	= r'>=|<=|>|<'
@@ -413,6 +429,15 @@ class MyParser(Parser):
 		
 		if DEBUG: printGreen(f'expr -> term MULT_OP term ({repr(v)})')
 		return v
+
+	@_('ADD_OP factor')
+	def factor(self, p):
+		if p.ADD_OP == '-':
+			v = Value('unary_op', {'op': '-', 'rhs': p.factor})
+			if DEBUG: printGreen(f'Rule: factor -> -factor ({repr(v)})')
+			return v
+		else:
+			return p.factor
 
 	@_('factor')
 	def term(self, p):
