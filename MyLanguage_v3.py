@@ -3,12 +3,11 @@ from colorama import Fore, Style
 import copy
 
 """
-ADDed
+ADDED FEATURES
  x Adding unary minus(have negative numbers and expressions like -(x+1))
  x Adding type checking by validating operations and types at runtime (easier) or as syntax errors before something executes (harder)
  x Implement sorting of the list(quicksort, mergesort, fibbinoci numbers-double recursion)
-
- o Maybe add indexing operations to lists
+ x Maybe add indexing operations to lists
  o Maybe adding strings and appropriate operations
  o Adding a for or while loop
  o Adding boolean coffeicents 2 * false have an error message (adding else cases)
@@ -278,7 +277,8 @@ class MyLexer(Lexer):
 			   IF, THEN, ELSE, ENDIF,
 			   LBRACKET, RBRACKET, COMMA,
 			   HEAD, TAIL,
-			   SORT, QUICKSORT }
+			   SORT, QUICKSORT,
+			   LENGTH }
 
 	# String containing ignored characters
 	ignore = ' \t'
@@ -316,6 +316,7 @@ class MyLexer(Lexer):
 	ID['tail'] = TAIL
 	ID['sort'] = SORT
 	ID['quicksort'] = QUICKSORT
+	ID['length'] = LENGTH
 
 	ignore_comment = r'\#.*'
 
@@ -554,6 +555,14 @@ class MyParser(Parser):
 			return quicksort(less) + [pivot] + quicksort(greater)
 		sorted_vals = quicksort(p.list.elements)
 		return Value('list', {'elements': sorted_vals})
+
+	@_('LENGTH LPAREN ID RPAREN')
+	def factor(self, p):
+		lst = self._values.get(p.ID)
+		if lst and lst.dataType == 'list':
+			return Value('int', {'value': len(lst.elements)})
+		else:
+			raise RuntimeError(f'Cannot get length of non-list: {p.ID}')
 
 if __name__ == '__main__':
 	lexer = MyLexer()
