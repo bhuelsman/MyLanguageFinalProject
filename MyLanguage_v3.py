@@ -277,7 +277,8 @@ class MyLexer(Lexer):
 			   PRINT, DUMP,
 			   IF, THEN, ELSE, ENDIF,
 			   LBRACKET, RBRACKET, COMMA,
-			   HEAD, TAIL }
+			   HEAD, TAIL,
+			   SORT }
 
 	# String containing ignored characters
 	ignore = ' \t'
@@ -313,6 +314,7 @@ class MyLexer(Lexer):
 	ID['endif'] = ENDIF
 	ID['head'] = HEAD
 	ID['tail'] = TAIL
+	ID['sort'] = SORT
 
 	ignore_comment = r'\#.*'
 
@@ -514,6 +516,16 @@ class MyParser(Parser):
 	def term(self, p):
 		v = Value('list', {'elements': p.list.elements[1:]})
 		if DEBUG: printGreen(f'Rule: TAIL list -> term ({repr(v)})')
+		return v
+	
+	@_('SORT list')
+	def term(self, p):
+		if all(el.dataType == 'int' for el in p.list.elements):
+			sorted_elements = sorted(p.list.elements, key=lambda x: x.value)
+			v = Value('list', {'elements': sorted_elements})
+		else:
+			raise TypeError("sort only supports lists of integers")
+		if DEBUG: printGreen(f'Rule: SORT list -> term ({repr(v)})')
 		return v
 
 if __name__ == '__main__':
