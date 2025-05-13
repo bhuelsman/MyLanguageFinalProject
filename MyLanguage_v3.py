@@ -3,10 +3,10 @@ from colorama import Fore, Style
 import copy
 
 """
-MUST ADD
- o Adding unary minus(have negative numbers and expressions like -(x+1))
- o Adding type checking by validating operations and types at runtime (easier) or as syntax errors before something executes (harder)
- o Implement sorting of the list(quicksort, mergesort, fibbinoci numbers-double recursion)
+ADDed
+ x Adding unary minus(have negative numbers and expressions like -(x+1))
+ x Adding type checking by validating operations and types at runtime (easier) or as syntax errors before something executes (harder)
+ x Implement sorting of the list(quicksort, mergesort, fibbinoci numbers-double recursion)
 
  o Maybe add indexing operations to lists
  o Maybe adding strings and appropriate operations
@@ -475,6 +475,19 @@ class MyParser(Parser):
 		else:
 			if DEBUG: printGreen(f'Rule: id -> factor ({p.ID})')
 			return Value('id', {'id': p.ID})
+		
+	@_('ID LBRACKET expr RBRACKET')
+	def factor(self, p):
+		# Look up the list by ID
+		lst = self._values.get(p.ID)
+		if lst and lst.dataType == 'list':
+			index = p.expr.value
+			if isinstance(index, int) and 0 <= index < len(lst.elements):
+				return lst.elements[index]
+			else:
+				raise RuntimeError(f'Index out of bounds: {index}')
+		else:
+			raise RuntimeError(f'Cannot index non-list variable: {p.ID}')
 
 	@_('LPAREN expr_list RPAREN')
 	def factor(self, p):
