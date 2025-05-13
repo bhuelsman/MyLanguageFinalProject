@@ -179,14 +179,20 @@ class Value:
 		elif self.dataType == 'function':
 			v = Value('function', {'variable': str(self.variable), 'result': self.result.simplify(valueLookup)})
 		elif self.dataType == 'operation':
-			if self.lhs.dataType == self.rhs.dataType and self.lhs.dataType in ['int', 'bool']:
-				result = apply(self.operation, self.lhs.value, self.rhs.value)
-				if self.operation in ['+', '-', '/', '*']:
-					v = Value(self.lhs.dataType, {'value': result})
-				else:
-					v = Value('bool', {'value': result})
+			simplified_lhs = self.lhs.simplify(valueLookup)
+			simplified_rhs = self.rhs.simplify(valueLookup)
+			if simplified_lhs.dataType != simplified_rhs.dataType:
+				raise TypeError(f'Type error in operation: {simplified_lhs.dataType} {self.operation} {simplified_rhs.dataType}')
+			if simplified_lhs.dataType not in ['int', 'bool']:
+				raise TypeError(f'Unsupported operand type for {self.operation}: {simplified_lhs.dataType}')
+			try:
+				result = apply(self.operation, simplified_lhs.value, simplified_rhs.value)
+			except Exception as e:
+				raise RuntimeError(f'Failed to apply operation {self.operation} on {simplified_lhs.value}')
+			if self.operation in ['+', '-', '*', '/']:
+				v = Value(simplified_lhs.dataType, {'value': result})
 			else:
-				v = Value('operation', {'lhs': self.lhs.simplify(valueLookup), 'operation': self.operation, 'rhs': self.rhs.simplify(valueLookup)})
+				v = Value('bool', {'value': result})
 		elif self.dataType == 'id':
 			v = Value('id', {'id': self.id})
 		elif self.dataType == 'conditional':
@@ -335,10 +341,17 @@ class MyParser(Parser):
 		
 	@_('PRINT expr_list')
 	def statement(self, p):
+		try:
+			result = p.expr_list.simplify({})
+			print(result)
+		except Exception as e:
+			print(f'Runtime error: {e}')
+		"""
 		s = str(p.expr_list)
 		while s.startswith('(') and s.endswith(')'):
 			s = s[1:-1]
 		print(s)
+		"""
 		
 	@_('DUMP')
 	def statement(self, p):
