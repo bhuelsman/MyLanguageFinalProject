@@ -45,7 +45,7 @@ y:=[1,5,3,2,7,9,4,6]
 print(sum(y))
 ```
 ### Reverse a List Checking
-Finds the length of a list if it is stored in a variable
+Reverses a list
 ```
 y:=[1,5,3,2,7,9,4,6]
 print(reverse(y))
