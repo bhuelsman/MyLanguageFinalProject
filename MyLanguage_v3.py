@@ -8,7 +8,7 @@ ADDED FEATURES
  x Adding type checking by validating operations and types at runtime (easier) or as syntax errors before something executes (harder)
  x Implement sorting of the list(quicksort, mergesort, fibbinoci numbers-double recursion)
  x Maybe add indexing operations to lists
- o Maybe adding strings and appropriate operations
+ x Maybe adding strings and appropriate operations
  o Adding a for or while loop
  o Adding boolean coffeicents 2 * false have an error message (adding else cases)
 """
@@ -278,7 +278,7 @@ class MyLexer(Lexer):
 			   LBRACKET, RBRACKET, COMMA,
 			   HEAD, TAIL,
 			   SORT, QUICKSORT,
-			   LENGTH }
+			   LENGTH, SUM, REVERSE}
 
 	# String containing ignored characters
 	ignore = ' \t'
@@ -317,6 +317,8 @@ class MyLexer(Lexer):
 	ID['sort'] = SORT
 	ID['quicksort'] = QUICKSORT
 	ID['length'] = LENGTH
+	ID['sum'] = SUM
+	ID['reverse'] = REVERSE
 
 	ignore_comment = r'\#.*'
 
@@ -563,6 +565,27 @@ class MyParser(Parser):
 			return Value('int', {'value': len(lst.elements)})
 		else:
 			raise RuntimeError(f'Cannot get length of non-list: {p.ID}')
+		
+	@_('SUM LPAREN ID RPAREN')
+	def factor(self, p):
+		lst = self._values.get(p.ID)
+		if lst and lst.dataType == 'list':
+			total = 0
+			for el in lst.elements:
+				if el.dataType != 'int':
+					raise RuntimeError(f"Cannot sum non-integer: {el}")
+				total += el.value
+			return Value('int', {'value': total})
+		else:
+			raise RuntimeError(f'Cannot sum non-list: {p.ID}')
+		
+	@_('REVERSE LPAREN ID RPAREN')
+	def factor(self, p):
+		lst = self._values.get(p.ID)
+		if lst and lst.dataType == 'list':
+			return Value('list', {'elements': list(reversed(lst.elements))})
+		else:
+			raise RuntimeError(f'Cannot reverse non-list: {p.ID}')
 
 if __name__ == '__main__':
 	lexer = MyLexer()
