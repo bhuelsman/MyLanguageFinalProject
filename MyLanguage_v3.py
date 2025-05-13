@@ -278,7 +278,7 @@ class MyLexer(Lexer):
 			   IF, THEN, ELSE, ENDIF,
 			   LBRACKET, RBRACKET, COMMA,
 			   HEAD, TAIL,
-			   SORT }
+			   SORT, QUICKSORT }
 
 	# String containing ignored characters
 	ignore = ' \t'
@@ -315,6 +315,7 @@ class MyLexer(Lexer):
 	ID['head'] = HEAD
 	ID['tail'] = TAIL
 	ID['sort'] = SORT
+	ID['quicksort'] = QUICKSORT
 
 	ignore_comment = r'\#.*'
 
@@ -527,6 +528,19 @@ class MyParser(Parser):
 			raise TypeError("sort only supports lists of integers")
 		if DEBUG: printGreen(f'Rule: SORT list -> term ({repr(v)})')
 		return v
+	
+	@_('QUICKSORT list')
+	def term(self, p):
+		def quicksort(vals):
+			if not vals:
+				return []
+			pivot = vals[0]
+			tail = vals[1:]
+			less = [x for x in tail if x.value < pivot.value]
+			greater = [x for x in tail if x.value >= pivot.value]
+			return quicksort(less) + [pivot] + quicksort(greater)
+		sorted_vals = quicksort(p.list.elements)
+		return Value('list', {'elements': sorted_vals})
 
 if __name__ == '__main__':
 	lexer = MyLexer()
