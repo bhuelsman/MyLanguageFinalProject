@@ -32,3 +32,9 @@ y := [4,7,2,8,0]
 print(y[3])
 print(y[6])
 ```
+### Length of List Checking
+Finds the length of a list if it is stored in a variable
+```
+y:=[1,5,3,2,7,9,4,6]
+print(length(y))
+```
