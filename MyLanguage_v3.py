@@ -9,6 +9,8 @@ ADDED FEATURES
  x Implement sorting of the list(quicksort, mergesort, fibbinoci numbers-double recursion)
  x Maybe add indexing operations to lists
  x Maybe adding strings and appropriate operations
+ x Summing up a list
+ x Reversing a list
  o Adding a for or while loop
  o Adding boolean coffeicents 2 * false have an error message (adding else cases)
 """
@@ -278,7 +280,7 @@ class MyLexer(Lexer):
 			   LBRACKET, RBRACKET, COMMA,
 			   HEAD, TAIL,
 			   SORT, QUICKSORT,
-			   LENGTH, SUM, REVERSE}
+			   LENGTH, SUM, REVERSE, MIN, MAX}
 
 	# String containing ignored characters
 	ignore = ' \t'
@@ -319,6 +321,9 @@ class MyLexer(Lexer):
 	ID['length'] = LENGTH
 	ID['sum'] = SUM
 	ID['reverse'] = REVERSE
+	ID['min'] = MIN
+	ID['max'] = MAX
+
 
 	ignore_comment = r'\#.*'
 
@@ -586,6 +591,32 @@ class MyParser(Parser):
 			return Value('list', {'elements': list(reversed(lst.elements))})
 		else:
 			raise RuntimeError(f'Cannot reverse non-list: {p.ID}')
+		
+	@_('MIN LPAREN ID RPAREN')
+	def factor(self, p):
+		lst = self._values.get(p.ID)
+		if lst and lst.dataType == 'list':
+			if not lst.elements:
+				raise RuntimeError(f'min() called on empty list: {p.ID}')
+			values = [el.value for el in lst.elements if el.dataType == 'int']
+			if len(values) != len(lst.elements):
+				raise RuntimeError(f'min() only supported on list of integers: {p.ID}')
+			return Value('int', {'value': min(values)})
+		else:
+			raise RuntimeError(f'min() called on non-list: {p.ID}')
+
+	@_('MAX LPAREN ID RPAREN')
+	def factor(self, p):
+		lst = self._values.get(p.ID)
+		if lst and lst.dataType == 'list':
+			if not lst.elements:
+				raise RuntimeError(f'max() called on empty list: {p.ID}')
+			values = [el.value for el in lst.elements if el.dataType == 'int']
+			if len(values) != len(lst.elements):
+				raise RuntimeError(f'max() only supported on list of integers: {p.ID}')
+			return Value('int', {'value': max(values)})
+		else:
+			raise RuntimeError(f'max() called on non-list: {p.ID}')
 
 if __name__ == '__main__':
 	lexer = MyLexer()
