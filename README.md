@@ -38,3 +38,15 @@ Finds the length of a list if it is stored in a variable
 y:=[1,5,3,2,7,9,4,6]
 print(length(y))
 ```
+### Sum of List Checking
+Sums up all the integers in a list and returns the total int
+```
+y:=[1,5,3,2,7,9,4,6]
+print(sum(y))
+```
+### Reverse a List Checking
+Finds the length of a list if it is stored in a variable
+```
+y:=[1,5,3,2,7,9,4,6]
+print(reverse(y))
+```
