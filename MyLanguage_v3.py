@@ -49,6 +49,8 @@ def apply(operation, lhs, rhs):
 	elif operation == '*':
 		return lhs * rhs
 	elif operation == '/':
+		if rhs == 0:
+			raise ZeroDivisionError("Division by zero is not allowed.")
 		return lhs // rhs
 	elif operation == '==':
 		return lhs == rhs
