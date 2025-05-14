@@ -3,17 +3,19 @@ from colorama import Fore, Style
 import copy
 
 """
+HERE IS MY GITHUB: https://github.com/bhuelsman/MyLanguageFinalProject/tree/main
+My ReadMe file has everything on there with code you can run to test to see if my functionalities work
+
+
 ADDED FEATURES
  x Adding unary minus(have negative numbers and expressions like -(x+1))
  x Adding type checking by validating operations and types at runtime (easier) or as syntax errors before something executes (harder)
- x Implement sorting of the list(quicksort, mergesort, fibbinoci numbers-double recursion)
- x Maybe add indexing operations to lists
- x Maybe adding strings and appropriate operations
+ x Implement sorting of the list(quicksort and sort)
+ x Adding indexing operations to lists
  x Summing up a list
  x Reversing a list
  x Finding min and max of a list
- o Adding a for or while loop
- o Adding boolean coffeicents 2 * false have an error message (adding else cases)
+ x Finding the head and tail of a list(when the list is stored in a variable)
 """
 
 DEBUG = True
