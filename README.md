@@ -50,8 +50,15 @@ Reverses a list stored in a variable
 y:=[1,5,3,2,7,9,4,6]
 print(reverse(y))
 ```
+### Finding Head/Tail of a List
+When list is stored in a variable, this is how you can check
+```
+y:=[1,5,3,2,7,9,4,6]
+print(head . y)
+print(tail . y)
+```
 ### Finding Min and Max of a List
-Reverses a list stored in a variable
+Finds the min and max of a list when stored in a variable
 ```
 y:=[1,5,3,2,7,9,4,6]
 print(min(y))
