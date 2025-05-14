@@ -11,6 +11,7 @@ ADDED FEATURES
  x Maybe adding strings and appropriate operations
  x Summing up a list
  x Reversing a list
+ x Finding min and max of a list
  o Adding a for or while loop
  o Adding boolean coffeicents 2 * false have an error message (adding else cases)
 """
@@ -280,7 +281,9 @@ class MyLexer(Lexer):
 			   LBRACKET, RBRACKET, COMMA,
 			   HEAD, TAIL,
 			   SORT, QUICKSORT,
-			   LENGTH, SUM, REVERSE, MIN, MAX}
+			   LENGTH, SUM, REVERSE, MIN, MAX,
+			   FOR, IN, DO, END,
+			   LBRACE, RBRACE}
 
 	# String containing ignored characters
 	ignore = ' \t'
@@ -299,6 +302,8 @@ class MyLexer(Lexer):
 	LBRACKET	= r'\['
 	RBRACKET	= r'\]'
 	COMMA	= r','
+	LBRACE = r'\{'
+	RBRACE = r'\}'
 
 	@_(r'\d+')
 	def NUMBER(self, t):
@@ -323,6 +328,10 @@ class MyLexer(Lexer):
 	ID['reverse'] = REVERSE
 	ID['min'] = MIN
 	ID['max'] = MAX
+	ID['for'] = FOR 
+	ID['in'] = IN 
+	ID['do'] = DO
+	ID['end'] = END 
 
 
 	ignore_comment = r'\#.*'
@@ -365,6 +374,9 @@ class MyParser(Parser):
 			s = s[1:-1]
 		print(s)
 		"""
+	@_('PRINT LPAREN ID RPAREN')
+	def statement(self, p):
+		return ('print', p.expr_list)
 		
 	@_('DUMP')
 	def statement(self, p):
@@ -533,11 +545,39 @@ class MyParser(Parser):
 		v = p.list.elements[0]
 		if DEBUG: printGreen(f'Rule: HEAD list -> term ({repr(v)})')
 		return v
+	
+	@_('HEAD SEP ID')
+	def term(self, p):
+		lst = self._values.get(p.ID)
+		if lst is None:
+			raise RuntimeError(f'Variable {p.ID} is not defined')
+		if lst.dataType != 'list':
+			raise RuntimeError(f'HEAD called on non-list variable {p.ID}')
+		if not lst.elements:
+			raise RuntimeError(f'HEAD called on empty list {p.ID}')
 		
+		v = lst.elements[0]
+		if DEBUG: printGreen(f'Rule: HEAD ID -> term ({repr(v)})')
+		return v
+			
 	@_('TAIL SEP list')
 	def term(self, p):
 		v = Value('list', {'elements': p.list.elements[1:]})
 		if DEBUG: printGreen(f'Rule: TAIL list -> term ({repr(v)})')
+		return v
+	
+	@_('TAIL SEP ID')
+	def term(self, p):
+		lst = self._values.get(p.ID)
+		if lst is None:
+			raise RuntimeError(f'Variable {p.ID} is not defined')
+		if lst.dataType != 'list':
+			raise RuntimeError(f'TAIL called on non-list variable {p.ID}')
+		if not lst.elements:
+			raise RuntimeError(f'TAIL called on empty list {p.ID}')
+		
+		v = Value('list', {'elements': lst.elements[1:]})
+		if DEBUG: printGreen(f'Rule: TAIL ID -> term ({repr(v)})')
 		return v
 	
 	@_('SORT list')
